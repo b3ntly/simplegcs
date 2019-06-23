@@ -1,2 +1,0 @@
-package simplegcs_test
-

@@ -18,13 +18,19 @@ type Storage struct {
 }
 
 // New ...
-func (s *Storage) New(bucketName string) (*Storage, error) {
+func New(bucketName string) (*Storage, error) {
 	client, err := gstorage.NewClient(gcontext.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	return &Storage{bucketName: bucketName, client: client}, nil
+	s := &Storage{bucketName: bucketName, client: client}
+
+	if err := s.BucketCreateIfNotExists(); err != nil {
+		return nil, err 
+	}
+
+	return s, nil
 }
 
 // Lock ...
@@ -129,4 +135,52 @@ func (s *Storage) Stat(key string) (certmagic.KeyInfo, error) {
 		Modified:   attrs.Updated,
 		IsTerminal: true,
 	}, nil 
+}
+
+// BucketCreateIfNotExists ...
+func (s *Storage) BucketCreateIfNotExists() error {
+	exists, err := s.BucketExists()
+	if err != nil {
+		return err 
+	}
+
+	if !exists {
+		if err := s.BucketCreate(); err != nil {
+			return err 
+		}
+	}
+
+	return nil 
+}
+
+// BucketCreate returns true if the given bucket exists
+func (s *Storage) BucketCreate() error {
+	return s.client.Bucket(s.bucketName).Create(gcontext.Background(), "lionsforce-2", nil)
+}
+
+// BucketExists returns true if the given bucket exists
+func (s *Storage) BucketExists() (bool, error) {
+	attrs, _ := s.client.Bucket(s.bucketName).Attrs(gcontext.Background())
+	return attrs != nil && attrs.Name == s.bucketName, nil
+}
+
+// BucketDelete ...
+func (s *Storage) BucketDelete() error {
+	iterator := s.client.Bucket(s.bucketName).Objects(gcontext.Background(), nil)
+	for {
+		attrs, err := iterator.Next()
+		if err == giterator.Done {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+
+		if err := s.client.Bucket(s.bucketName).Object(attrs.Name).Delete(gcontext.Background()); err != nil {
+			return err 
+		}
+	}
+	
+	return s.client.Bucket(s.bucketName).Delete(gcontext.Background())
 }
