@@ -14,17 +14,18 @@ import (
 // Storage ...
 type Storage struct {
 	bucketName string
+	projectID string 
 	client     *gstorage.Client
 }
 
 // New ...
-func New(bucketName string) (*Storage, error) {
+func New(bucketName string, projectID string) (*Storage, error) {
 	client, err := gstorage.NewClient(gcontext.Background())
 	if err != nil {
 		return nil, err
 	}
 
-	s := &Storage{bucketName: bucketName, client: client}
+	s := &Storage{bucketName: bucketName, projectID: projectID, client: client}
 
 	if err := s.BucketCreateIfNotExists(); err != nil {
 		return nil, err 
@@ -155,7 +156,7 @@ func (s *Storage) BucketCreateIfNotExists() error {
 
 // BucketCreate returns true if the given bucket exists
 func (s *Storage) BucketCreate() error {
-	return s.client.Bucket(s.bucketName).Create(gcontext.Background(), "lionsforce-2", nil)
+	return s.client.Bucket(s.bucketName).Create(gcontext.Background(), s.projectID, nil)
 }
 
 // BucketExists returns true if the given bucket exists
